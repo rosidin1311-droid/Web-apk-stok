@@ -2,100 +2,121 @@
 <html lang="id">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root { --cord-pink: #d8a7b1; --bg: #f8f1f1; --text: #5c4d4d; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; }
-        .page { display: none; } .active { display: block; }
-        button { background: var(--cord-pink); border: none; padding: 10px 15px; border-radius: 8px; color: white; margin: 5px 0; }
-        .card { background: white; padding: 15px; border-radius: 12px; border-left: 5px solid var(--cord-pink); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-    </style>
 </head>
-<body>
+<body class="bg-stone-50 min-h-screen text-stone-800 pb-10">
 
-    <nav>
-        <button onclick="show('master')">Master</button>
-        <button onclick="show('input')">Input</button>
-        <button onclick="show('wip')">WIP</button>
+    <div class="bg-rose-300 p-6 shadow-md rounded-b-3xl mb-6">
+        <h1 class="text-2xl font-bold text-white tracking-wide">PROD-OS v1.0</h1>
+        <p class="text-rose-50 text-sm">Corduroy Production System</p>
+    </div>
+
+    <nav class="flex justify-around px-2 mb-6">
+        <button onclick="show('master')" class="bg-white px-4 py-2 rounded-xl shadow-sm border border-rose-100 font-semibold text-rose-400">Master</button>
+        <button onclick="show('input')" class="bg-white px-4 py-2 rounded-xl shadow-sm border border-rose-100 font-semibold text-rose-400">Input</button>
+        <button onclick="show('wip')" class="bg-white px-4 py-2 rounded-xl shadow-sm border border-rose-100 font-semibold text-rose-400">WIP</button>
+        <button onclick="show('stok')" class="bg-white px-4 py-2 rounded-xl shadow-sm border border-rose-100 font-semibold text-rose-400">Stok</button>
     </nav>
 
-    <div id="master" class="page active">
-        <h3>Master Item</h3>
-        <input id="m_item" placeholder="Nama Item Baru">
-        <button onclick="addMaster()">Tambah</button>
-        <div id="master-list"></div>
-    </div>
+    <div class="px-4">
+        <div id="master" class="page active hidden">
+            <h2 class="font-bold mb-3">Master Data</h2>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-rose-100">
+                <input id="m_item" class="w-full p-3 border border-rose-200 rounded-xl mb-3" placeholder="Nama Item Baru">
+                <button onclick="addMaster()" class="w-full bg-rose-400 text-white p-3 rounded-xl font-bold">TAMBAH ITEM</button>
+            </div>
+            <div id="master-list" class="mt-4 space-y-2"></div>
+        </div>
 
-    <div id="input" class="page">
-        <h3>Input Produksi</h3>
-        <select id="p_item"></select>
-        <input id="p_qty" type="number" placeholder="Jumlah">
-        <button onclick="startProduction()">Mulai Produksi</button>
-    </div>
+        <div id="input" class="page hidden">
+            <h2 class="font-bold mb-3">Input Produksi</h2>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-rose-100">
+                <select id="p_item" class="w-full p-3 border border-rose-200 rounded-xl mb-3"></select>
+                <input id="p_qty" type="number" class="w-full p-3 border border-rose-200 rounded-xl mb-3" placeholder="Jumlah">
+                <button onclick="startProduction()" class="w-full bg-rose-500 text-white p-3 rounded-xl font-bold">MULAI PRODUKSI</button>
+            </div>
+        </div>
 
-    <div id="wip" class="page">
-        <h3>Laporan WIP</h3>
-        <button onclick="exportWIP()">Download Excel (CSV)</button>
-        <div id="wip-list"></div>
+        <div id="wip" class="page hidden">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="font-bold">Laporan WIP</h2>
+                <button onclick="exportWIP()" class="bg-emerald-500 text-white px-3 py-1 rounded-lg text-sm">Download Excel</button>
+            </div>
+            <div id="wip-list" class="space-y-3"></div>
+        </div>
+
+        <div id="stok" class="page hidden">
+            <h2 class="font-bold mb-3">Data Stok</h2>
+            <div id="stok-list" class="space-y-3"></div>
+        </div>
     </div>
 
     <script>
         const supabase = supabaseClient.createClient('https://dgtusdefxvvrrefkpfwp.supabase.co/rest/v1/', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndHVzZGVmeHZ2cnJlZmtwZndwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTY4NzUsImV4cCI6MjA5NTY3Mjg3NX0.wuiBY5UpyHJO_J9j1C6CHh5tcgg6xk6Z2BG6I3ppDog');
 
         function show(id) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        // Jalankan saat load
+        async function loadAll() {
+            // Dropdown & Master
+            const { data: items } = await supabase.from('items').select('*');
+            document.getElementById('p_item').innerHTML = items.map(i => `<option value="${i.nama_item}">${i.nama_item}</option>`).join('');
+            
+            // WIP List
+            const { data: wips } = await supabase.from('production_logs').select('*');
+            document.getElementById('wip-list').innerHTML = wips.map(w => `
+                <div class="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center">
+                    <div><p class="font-bold">${w.item_id}</p><p class="text-sm text-stone-500">Qty: ${w.quantity}</p></div>
+                    <button onclick="finishWIP(${w.id}, '${w.item_id}', ${w.quantity})" class="bg-rose-400 text-white px-4 py-2 rounded-lg text-sm">Selesaikan</button>
+                </div>`).join('');
+            
+            // Stok List
+            const { data: stok } = await supabase.from('stock').select('*');
+            document.getElementById('stok-list').innerHTML = stok.map(s => `
+                <div class="bg-white p-4 rounded-xl shadow-sm flex justify-between">
+                    <span>${s.item_id}</span><span class="font-bold">${s.total_qty} pcs</span>
+                </div>`).join('');
         }
 
         async function addMaster() {
             const val = document.getElementById('m_item').value;
             await supabase.from('items').insert([{ nama_item: val }]);
-            alert("Item ditambah!"); location.reload();
+            alert("Item Added!"); loadAll();
         }
 
         async function startProduction() {
             const item = document.getElementById('p_item').value;
             const qty = document.getElementById('p_qty').value;
             await supabase.from('production_logs').insert([{ item_id: item, quantity: qty, status: 'WIP' }]);
-            alert("Masuk WIP!");
+            alert("Produksi Dimulai!"); loadAll();
         }
 
-        // --- FUNGSI OTOMATISASI (PRO-LEVEL) ---
-        async function finishWIP(id, item_name, qty) {
-            // 1. Tambah ke stok (atau update)
-            const { data: existing } = await supabase.from('stock').select('*').eq('item_id', item_name).single();
+        async function finishWIP(id, name, qty) {
+            const { data: existing } = await supabase.from('stock').select('*').eq('item_id', name).single();
             if(existing) {
-                await supabase.from('stock').update({ total_qty: existing.total_qty + parseInt(qty) }).eq('item_id', item_name);
+                await supabase.from('stock').update({ total_qty: existing.total_qty + parseInt(qty) }).eq('item_id', name);
             } else {
-                await supabase.from('stock').insert([{ item_id: item_name, total_qty: qty }]);
+                await supabase.from('stock').insert([{ item_id: name, total_qty: qty }]);
             }
-            // 2. Hapus dari WIP
             await supabase.from('production_logs').delete().eq('id', id);
-            alert("Produksi Selesai & Stok Terupdate!"); location.reload();
+            alert("Stok Terupdate!"); loadAll();
         }
 
-        // --- EXPORT KE EXCEL ---
         async function exportWIP() {
             const { data } = await supabase.from('production_logs').select('*');
-            let csv = "ID,Item,Qty,Status\n";
-            data.forEach(d => csv += `${d.id},${d.item_id},${d.quantity},${d.status}\n`);
+            let csv = "ID,Item,Qty\n";
+            data.forEach(d => csv += `${d.id},${d.item_id},${d.quantity}\n`);
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = 'Laporan_WIP.csv'; a.click();
+            const a = document.createElement('a'); a.href = url; a.download = 'WIP_Report.csv'; a.click();
         }
 
-        async function loadData() {
-            // Load Items untuk dropdown
-            const { data: items } = await supabase.from('items').select('*');
-            document.getElementById('p_item').innerHTML = items.map(i => `<option value="${i.nama_item}">${i.nama_item}</option>`).join('');
-            
-            // Load WIP List
-            const { data: wips } = await supabase.from('production_logs').select('*');
-            document.getElementById('wip-list').innerHTML = wips.map(w => `
-                <div class="card">${w.item_id} (${w.quantity}) 
-                <button onclick="finishWIP(${w.id}, '${w.item_id}', ${w.quantity})">Selesaikan</button></div>`).join('');
-        }
-        loadData();
+        show('master');
+        loadAll();
     </script>
 </body>
 </html>
