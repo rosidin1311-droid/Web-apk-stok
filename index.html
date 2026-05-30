@@ -4,93 +4,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; padding: 10px; background: #0d0221; color: #00f2ff; }
-        .tab { display: none; background: #1a0b33; padding: 15px; border-radius: 5px; margin-top: 10px; border: 1px solid #ff00ff; box-shadow: 0 0 10px #ff00ff55; }
-        .active { display: block; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; background: #0d0221; border: 1px solid #00f2ff; color: #00f2ff; box-sizing: border-box; }
-        button { background: #ff00ff; color: white; font-weight: bold; cursor: pointer; }
-        .row { border-bottom: 1px solid #00f2ff; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        nav { display: flex; gap: 5px; }
-        nav button { background: #0d0221; color: #00f2ff; border: 1px solid #00f2ff; font-size: 10px; }
+        :root { --cord-pink: #d8a7b1; --bg: #f8f1f1; --text: #5c4d4d; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; }
+        .page { display: none; } .active { display: block; }
+        button { background: var(--cord-pink); border: none; padding: 10px 15px; border-radius: 8px; color: white; margin: 5px 0; }
+        .card { background: white; padding: 15px; border-radius: 12px; border-left: 5px solid var(--cord-pink); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
 
-    <h2 style="text-shadow: 0 0 10px #00f2ff;">PROD-OS v1.0</h2>
     <nav>
-        <button onclick="showTab('master')">MASTER</button>
-        <button onclick="showTab('input')">PROD</button>
-        <button onclick="showTab('wip')">WIP</button>
-        <button onclick="showTab('stok')">STOK</button>
+        <button onclick="show('master')">Master</button>
+        <button onclick="show('input')">Input</button>
+        <button onclick="show('wip')">WIP</button>
     </nav>
 
-    <div id="master" class="tab active">
-        <input type="text" id="m_nama" placeholder="NAMA ITEM">
-        <button onclick="addMaster()">SAVE ITEM</button>
+    <div id="master" class="page active">
+        <h3>Master Item</h3>
+        <input id="m_item" placeholder="Nama Item Baru">
+        <button onclick="addMaster()">Tambah</button>
         <div id="master-list"></div>
     </div>
 
-    <div id="input" class="tab">
-        <input type="text" id="p_id" placeholder="ITEM ID">
-        <input type="number" id="p_qty" placeholder="QUANTITY">
-        <button onclick="saveProduksi()">INITIATE PRODUCTION</button>
+    <div id="input" class="page">
+        <h3>Input Produksi</h3>
+        <select id="p_item"></select>
+        <input id="p_qty" type="number" placeholder="Jumlah">
+        <button onclick="startProduction()">Mulai Produksi</button>
     </div>
 
-    <div id="wip" class="tab">
+    <div id="wip" class="page">
+        <h3>Laporan WIP</h3>
+        <button onclick="exportWIP()">Download Excel (CSV)</button>
         <div id="wip-list"></div>
-    </div>
-
-    <div id="stok" class="tab">
-        <div id="stok-list"></div>
-        <hr>
-        <input type="text" id="d_id" placeholder="ITEM ID">
-        <input type="number" id="d_qty" placeholder="QTY DELIVERED">
-        <button onclick="prosesDelivery()" style="background: #ff00ff;">EXECUTE DELIVERY</button>
     </div>
 
     <script>
         const supabase = supabaseClient.createClient('https://dgtusdefxvvrrefkpfwp.supabase.co/rest/v1/', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndHVzZGVmeHZ2cnJlZmtwZndwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTY4NzUsImV4cCI6MjA5NTY3Mjg3NX0.wuiBY5UpyHJO_J9j1C6CHh5tcgg6xk6Z2BG6I3ppDog');
 
-        function showTab(t) {
-            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-            document.getElementById(t).classList.add('active');
+        function show(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
         }
 
-        // --- LOGIKA EDIT SELISIH WIP ---
-        async function editWip(id) {
-            const newQty = prompt("Masukkan jumlah real (Update Selisih):");
-            if (newQty !== null) {
-                await supabase.from('production_logs').update({ quantity: parseInt(newQty) }).eq('id', id);
-                alert("Selisih terupdate!"); loadAll();
-            }
+        async function addMaster() {
+            const val = document.getElementById('m_item').value;
+            await supabase.from('items').insert([{ nama_item: val }]);
+            alert("Item ditambah!"); location.reload();
         }
 
-        async function saveProduksi() {
-            const item_id = document.getElementById('p_id').value;
+        async function startProduction() {
+            const item = document.getElementById('p_item').value;
             const qty = document.getElementById('p_qty').value;
-            await supabase.from('production_logs').insert([{ item_id, quantity: qty, status: 'WIP' }]);
-            alert("Data logged!"); loadAll();
+            await supabase.from('production_logs').insert([{ item_id: item, quantity: qty, status: 'WIP' }]);
+            alert("Masuk WIP!");
         }
 
-        async function prosesDelivery() {
-            const id = document.getElementById('d_id').value;
-            const qty = parseInt(document.getElementById('d_qty').value);
-            const { data: st } = await supabase.from('stock').select('total_qty').eq('item_id', id).single();
-            if(st) {
-                await supabase.from('stock').update({ total_qty: st.total_qty - qty }).eq('item_id', id);
-                alert("Delivery Sent!"); loadAll();
+        // --- FUNGSI OTOMATISASI (PRO-LEVEL) ---
+        async function finishWIP(id, item_name, qty) {
+            // 1. Tambah ke stok (atau update)
+            const { data: existing } = await supabase.from('stock').select('*').eq('item_id', item_name).single();
+            if(existing) {
+                await supabase.from('stock').update({ total_qty: existing.total_qty + parseInt(qty) }).eq('item_id', item_name);
+            } else {
+                await supabase.from('stock').insert([{ item_id: item_name, total_qty: qty }]);
             }
+            // 2. Hapus dari WIP
+            await supabase.from('production_logs').delete().eq('id', id);
+            alert("Produksi Selesai & Stok Terupdate!"); location.reload();
         }
 
-        async function loadAll() {
-            const { data: wip } = await supabase.from('production_logs').select('*').eq('status','WIP');
-            document.getElementById('wip-list').innerHTML = wip.map(i => `<div class='row'><span>${i.item_id}</span> <span>${i.quantity}</span> <button onclick="editWip(${i.id})">ADJUST</button></div>`).join('');
+        // --- EXPORT KE EXCEL ---
+        async function exportWIP() {
+            const { data } = await supabase.from('production_logs').select('*');
+            let csv = "ID,Item,Qty,Status\n";
+            data.forEach(d => csv += `${d.id},${d.item_id},${d.quantity},${d.status}\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'Laporan_WIP.csv'; a.click();
+        }
+
+        async function loadData() {
+            // Load Items untuk dropdown
+            const { data: items } = await supabase.from('items').select('*');
+            document.getElementById('p_item').innerHTML = items.map(i => `<option value="${i.nama_item}">${i.nama_item}</option>`).join('');
             
-            const { data: stk } = await supabase.from('stock').select('*');
-            document.getElementById('stok-list').innerHTML = stk.map(i => `<div class='row'><span>${i.item_id}</span> <b>${i.total_qty}</b></div>`).join('');
+            // Load WIP List
+            const { data: wips } = await supabase.from('production_logs').select('*');
+            document.getElementById('wip-list').innerHTML = wips.map(w => `
+                <div class="card">${w.item_id} (${w.quantity}) 
+                <button onclick="finishWIP(${w.id}, '${w.item_id}', ${w.quantity})">Selesaikan</button></div>`).join('');
         }
-
-        loadAll();
+        loadData();
     </script>
 </body>
 </html>
