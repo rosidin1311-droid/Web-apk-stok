@@ -52,7 +52,35 @@
             
             if (error) alert("Gagal: " + error.message);
             else alert("Berhasil disimpan!");
-        }
-    </script>
+        <div id="content">
+    <h2>Monitoring Data</h2>
+    <div id="dashboard-data" style="display: flex; gap: 10px;">
+        <div style="border:1px solid #ddd; padding:10px; width:50%;">
+            <h4>WIP (Proses)</h4>
+            <ul id="wip-list"></ul>
+        </div>
+        <div style="border:1px solid #ddd; padding:10px; width:50%;">
+            <h4>Stok Barang</h4>
+            <ul id="stok-list"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Fungsi untuk menarik data dari Supabase
+    async function loadDashboard() {
+        // Ambil data WIP
+        const { data: wip } = await supabase.from('production_logs').select('*').eq('status', 'WIP');
+        document.getElementById('wip-list').innerHTML = wip.map(item => `<li>Item ID ${item.item_id}: ${item.quantity}</li>`).join('');
+
+        // Ambil data Stok
+        const { data: stok } = await supabase.from('stock').select('*');
+        document.getElementById('stok-list').innerHTML = stok.map(item => `<li>Item ID ${item.item_id}: ${item.total_qty} pcs</li>`).join('');
+    }
+    
+    // Jalankan saat halaman dimuat
+    loadDashboard();
+</script>
+
 </body>
 </html>
