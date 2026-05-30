@@ -1,86 +1,71 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Produksi</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        body { font-family: sans-serif; padding: 10px; background: #f9f9f9; }
+        .card { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; font-weight: bold; }
+        .data-item { border-bottom: 1px solid #eee; padding: 5px 0; }
     </style>
 </head>
 <body>
+    <h2>Monitoring Produksi</h2>
 
-    <h1>Menu Utama</h1>
-    <div id="nav">
-        <button onclick="loadMenu('master')">Master Data</button>
-        <button onclick="loadMenu('produksi')">Input Produksi</button>
-        <button onclick="loadMenu('wip')">WIP Monitoring</button>
-        <button onclick="loadMenu('stok')">Data Stok</button>
+    <div class="card">
+        <h3>Input Produksi</h3>
+        <input type="text" id="item_id" placeholder="ID Item">
+        <input type="number" id="qty" placeholder="Jumlah">
+        <button onclick="simpanProduksi()">Simpan ke WIP</button>
     </div>
 
-    <div id="content" style="margin-top: 20px; padding: 15px; border: 1px solid #ccc;">
-        Pilih menu di atas untuk memulai.
+    <div class="card">
+        <h3>Pencarian Data</h3>
+        <input type="text" id="search" placeholder="Cari berdasarkan ID..." onkeyup="loadData()">
+        
+        <h4>Data WIP (Proses):</h4>
+        <div id="wip-list">Loading WIP...</div>
+        
+        <h4>Data Stok (Siap Kirim):</h4>
+        <div id="stok-list">Loading Stok...</div>
     </div>
 
     <script>
-        // ISI DENGAN DATA DARI SETTINGS API
-        const supabaseUrl = 'https://dgtusdefxvvrrefkpfwp.supabase.co/rest/v1/';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndHVzZGVmeHZ2cnJlZmtwZndwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTY4NzUsImV4cCI6MjA5NTY3Mjg3NX0.wuiBY5UpyHJO_J9j1C6CHh5tcgg6xk6Z2BG6I3ppDog';
-        const supabase = supabaseClient.createClient(supabaseUrl, supabaseKey);
+        const supabase = supabaseClient.createClient('https://dgtusdefxvvrrefkpfwp.supabase.co/rest/v1/', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndHVzZGVmeHZ2cnJlZmtwZndwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTY4NzUsImV4cCI6MjA5NTY3Mjg3NX0.wuiBY5UpyHJO_J9j1C6CHh5tcgg6xk6Z2BG6I3ppDog');
 
-        function loadMenu(menu) {
-            const content = document.getElementById('content');
-            if (menu === 'produksi') {
-                content.innerHTML = `
-                    <h3>Input Produksi</h3>
-                    <input type="number" id="qty" placeholder="Jumlah">
-                    <button onclick="simpanProduksi()">Simpan</button>
-                `;
-            } else {
-                content.innerHTML = `<h3>Menu ${menu} sedang dikembangkan...</h3>`;
-            }
+        // Fungsi Load Data (Monitoring B)
+        async function loadData() {
+            const search = document.getElementById('search').value;
+
+            // Ambil WIP
+            const { data: wip } = await supabase.from('production_logs')
+                .select('*').eq('status', 'WIP')
+                .ilike('item_id', `%${search}%`);
+            
+            document.getElementById('wip-list').innerHTML = wip.map(i => 
+                `<div class="data-item">Item ${i.item_id}: ${i.quantity} unit</div>`).join('');
+
+            // Ambil Stok
+            const { data: stok } = await supabase.from('stock')
+                .select('*')
+                .ilike('item_id', `%${search}%`);
+            
+            document.getElementById('stok-list').innerHTML = stok.map(i => 
+                `<div class="data-item">Item ${i.item_id}: <b>${i.total_qty} pcs</b></div>`).join('');
         }
 
+        // Fungsi Simpan (A)
         async function simpanProduksi() {
-            const qty = document.getElementById('qty').value;
-            // Contoh kirim ke Supabase
-            const { data, error } = await supabase
-                .from('production_logs')
-                .insert([{ quantity: qty, status: 'WIP' }]);
-            
-            if (error) alert("Gagal: " + error.message);
-            else alert("Berhasil disimpan!");
-        <div id="content">
-    <h2>Monitoring Data</h2>
-    <div id="dashboard-data" style="display: flex; gap: 10px;">
-        <div style="border:1px solid #ddd; padding:10px; width:50%;">
-            <h4>WIP (Proses)</h4>
-            <ul id="wip-list"></ul>
-        </div>
-        <div style="border:1px solid #ddd; padding:10px; width:50%;">
-            <h4>Stok Barang</h4>
-            <ul id="stok-list"></ul>
-        </div>
-    </div>
-</div>
+            const item_id = document.getElementById('item_id').value;
+            const qty = parseInt(document.getElementById('qty').value);
+            await supabase.from('production_logs').insert([{ item_id, quantity: qty, status: 'WIP' }]);
+            alert("Berhasil masuk WIP!");
+            loadData();
+        }
 
-<script>
-    // Fungsi untuk menarik data dari Supabase
-    async function loadDashboard() {
-        // Ambil data WIP
-        const { data: wip } = await supabase.from('production_logs').select('*').eq('status', 'WIP');
-        document.getElementById('wip-list').innerHTML = wip.map(item => `<li>Item ID ${item.item_id}: ${item.quantity}</li>`).join('');
-
-        // Ambil data Stok
-        const { data: stok } = await supabase.from('stock').select('*');
-        document.getElementById('stok-list').innerHTML = stok.map(item => `<li>Item ID ${item.item_id}: ${item.total_qty} pcs</li>`).join('');
-    }
-    
-    // Jalankan saat halaman dimuat
-    loadDashboard();
-</script>
-
+        loadData(); // Jalankan saat pertama buka
+    </script>
 </body>
 </html>
