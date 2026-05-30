@@ -1,71 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #f9f9f9; }
-        .card { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
-        input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; font-weight: bold; }
-        .data-item { border-bottom: 1px solid #eee; padding: 5px 0; }
+        body { font-family: sans-serif; padding: 10px; background: #f4f4f9; }
+        .tab-content { display: none; background: white; padding: 15px; border-radius: 10px; margin-top: 10px; border: 1px solid #ddd; }
+        .active { display: block; }
+        input, button { width: 100%; padding: 12px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background: #28a745; color: white; border: none; font-weight: bold; }
+        .btn-blue { background: #007bff; }
+        .data-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
+        nav button { width: 24%; font-size: 10px; padding: 5px; }
     </style>
 </head>
 <body>
-    <h2>Monitoring Produksi</h2>
 
-    <div class="card">
+    <h2>Aplikasi Produksi Pro</h2>
+    <nav>
+        <button onclick="showTab('input')">Input</button>
+        <button onclick="showTab('wip')">WIP</button>
+        <button onclick="showTab('stok')">Stok</button>
+        <button onclick="showTab('deliv')">Deliv</button>
+    </nav>
+
+    <div id="input" class="tab-content active">
         <h3>Input Produksi</h3>
         <input type="text" id="item_id" placeholder="ID Item">
         <input type="number" id="qty" placeholder="Jumlah">
         <button onclick="simpanProduksi()">Simpan ke WIP</button>
     </div>
 
-    <div class="card">
-        <h3>Pencarian Data</h3>
-        <input type="text" id="search" placeholder="Cari berdasarkan ID..." onkeyup="loadData()">
-        
-        <h4>Data WIP (Proses):</h4>
-        <div id="wip-list">Loading WIP...</div>
-        
-        <h4>Data Stok (Siap Kirim):</h4>
-        <div id="stok-list">Loading Stok...</div>
+    <div id="wip" class="tab-content">
+        <h3>Monitoring WIP</h3>
+        <input type="text" id="searchWip" placeholder="Cari ID Item..." onkeyup="loadData()">
+        <div id="wip-list"></div>
+    </div>
+
+    <div id="stok" class="tab-content">
+        <h3>Monitoring Stok</h3>
+        <input type="text" id="searchStok" placeholder="Cari ID Item..." onkeyup="loadData()">
+        <div id="stok-list"></div>
+    </div>
+
+    <div id="deliv" class="tab-content">
+        <h3>Delivery</h3>
+        <input type="text" id="deliv_id" placeholder="ID Item">
+        <input type="number" id="deliv_qty" placeholder="Qty Kirim">
+        <button class="btn-blue" onclick="prosesDelivery()">Kirim & Kurangi Stok</button>
     </div>
 
     <script>
         const supabase = supabaseClient.createClient('https://dgtusdefxvvrrefkpfwp.supabase.co/rest/v1/', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndHVzZGVmeHZ2cnJlZmtwZndwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTY4NzUsImV4cCI6MjA5NTY3Mjg3NX0.wuiBY5UpyHJO_J9j1C6CHh5tcgg6xk6Z2BG6I3ppDog');
 
-        // Fungsi Load Data (Monitoring B)
-        async function loadData() {
-            const search = document.getElementById('search').value;
-
-            // Ambil WIP
-            const { data: wip } = await supabase.from('production_logs')
-                .select('*').eq('status', 'WIP')
-                .ilike('item_id', `%${search}%`);
-            
-            document.getElementById('wip-list').innerHTML = wip.map(i => 
-                `<div class="data-item">Item ${i.item_id}: ${i.quantity} unit</div>`).join('');
-
-            // Ambil Stok
-            const { data: stok } = await supabase.from('stock')
-                .select('*')
-                .ilike('item_id', `%${search}%`);
-            
-            document.getElementById('stok-list').innerHTML = stok.map(i => 
-                `<div class="data-item">Item ${i.item_id}: <b>${i.total_qty} pcs</b></div>`).join('');
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
         }
 
-        // Fungsi Simpan (A)
+        async function loadData() {
+            const searchWip = document.getElementById('searchWip').value;
+            const searchStok = document.getElementById('searchStok').value;
+
+            // Load WIP
+            const { data: wip } = await supabase.from('production_logs').select('*').eq('status', 'WIP').ilike('item_id', `%${searchWip}%`);
+            document.getElementById('wip-list').innerHTML = wip.map(i => `<div class="data-item"><span>${i.item_id}</span> <span>${i.quantity} unit</span></div>`).join('');
+
+            // Load Stok
+            const { data: stok } = await supabase.from('stock').select('*').ilike('item_id', `%${searchStok}%`);
+            document.getElementById('stok-list').innerHTML = stok.map(i => `<div class="data-item"><span>${i.item_id}</span> <b>${i.total_qty} pcs</b></div>`).join('');
+        }
+
         async function simpanProduksi() {
             const item_id = document.getElementById('item_id').value;
             const qty = parseInt(document.getElementById('qty').value);
             await supabase.from('production_logs').insert([{ item_id, quantity: qty, status: 'WIP' }]);
-            alert("Berhasil masuk WIP!");
-            loadData();
+            alert("Berhasil!"); loadData();
         }
 
-        loadData(); // Jalankan saat pertama buka
+        async function prosesDelivery() {
+            const id = document.getElementById('deliv_id').value;
+            const qty = parseInt(document.getElementById('deliv_qty').value);
+            
+            // Logika pengurangan stok
+            const { data: current } = await supabase.from('stock').select('total_qty').eq('item_id', id).single();
+            if(current) {
+                await supabase.from('stock').update({ total_qty: current.total_qty - qty }).eq('item_id', id);
+                alert("Stok berhasil dikurangi!"); loadData();
+            } else {
+                alert("ID Item tidak ditemukan di Stok!");
+            }
+        }
+
+        loadData();
     </script>
 </body>
 </html>
