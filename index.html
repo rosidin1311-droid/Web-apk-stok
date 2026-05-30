@@ -4,95 +4,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #f4f4f9; }
-        .tab-content { display: none; background: white; padding: 15px; border-radius: 10px; margin-top: 10px; border: 1px solid #ddd; }
+        body { font-family: 'Courier New', Courier, monospace; padding: 10px; background: #0d0221; color: #00f2ff; }
+        .tab { display: none; background: #1a0b33; padding: 15px; border-radius: 5px; margin-top: 10px; border: 1px solid #ff00ff; box-shadow: 0 0 10px #ff00ff55; }
         .active { display: block; }
-        input, button { width: 100%; padding: 12px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background: #28a745; color: white; border: none; font-weight: bold; }
-        .btn-blue { background: #007bff; }
-        .data-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
-        nav button { width: 24%; font-size: 10px; padding: 5px; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; background: #0d0221; border: 1px solid #00f2ff; color: #00f2ff; box-sizing: border-box; }
+        button { background: #ff00ff; color: white; font-weight: bold; cursor: pointer; }
+        .row { border-bottom: 1px solid #00f2ff; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        nav { display: flex; gap: 5px; }
+        nav button { background: #0d0221; color: #00f2ff; border: 1px solid #00f2ff; font-size: 10px; }
     </style>
 </head>
 <body>
 
-    <h2>Aplikasi Produksi Pro</h2>
+    <h2 style="text-shadow: 0 0 10px #00f2ff;">PROD-OS v1.0</h2>
     <nav>
-        <button onclick="showTab('input')">Input</button>
+        <button onclick="showTab('master')">MASTER</button>
+        <button onclick="showTab('input')">PROD</button>
         <button onclick="showTab('wip')">WIP</button>
-        <button onclick="showTab('stok')">Stok</button>
-        <button onclick="showTab('deliv')">Deliv</button>
+        <button onclick="showTab('stok')">STOK</button>
     </nav>
 
-    <div id="input" class="tab-content active">
-        <h3>Input Produksi</h3>
-        <input type="text" id="item_id" placeholder="ID Item">
-        <input type="number" id="qty" placeholder="Jumlah">
-        <button onclick="simpanProduksi()">Simpan ke WIP</button>
+    <div id="master" class="tab active">
+        <input type="text" id="m_nama" placeholder="NAMA ITEM">
+        <button onclick="addMaster()">SAVE ITEM</button>
+        <div id="master-list"></div>
     </div>
 
-    <div id="wip" class="tab-content">
-        <h3>Monitoring WIP</h3>
-        <input type="text" id="searchWip" placeholder="Cari ID Item..." onkeyup="loadData()">
+    <div id="input" class="tab">
+        <input type="text" id="p_id" placeholder="ITEM ID">
+        <input type="number" id="p_qty" placeholder="QUANTITY">
+        <button onclick="saveProduksi()">INITIATE PRODUCTION</button>
+    </div>
+
+    <div id="wip" class="tab">
         <div id="wip-list"></div>
     </div>
 
-    <div id="stok" class="tab-content">
-        <h3>Monitoring Stok</h3>
-        <input type="text" id="searchStok" placeholder="Cari ID Item..." onkeyup="loadData()">
+    <div id="stok" class="tab">
         <div id="stok-list"></div>
-    </div>
-
-    <div id="deliv" class="tab-content">
-        <h3>Delivery</h3>
-        <input type="text" id="deliv_id" placeholder="ID Item">
-        <input type="number" id="deliv_qty" placeholder="Qty Kirim">
-        <button class="btn-blue" onclick="prosesDelivery()">Kirim & Kurangi Stok</button>
+        <hr>
+        <input type="text" id="d_id" placeholder="ITEM ID">
+        <input type="number" id="d_qty" placeholder="QTY DELIVERED">
+        <button onclick="prosesDelivery()" style="background: #ff00ff;">EXECUTE DELIVERY</button>
     </div>
 
     <script>
         const supabase = supabaseClient.createClient('https://dgtusdefxvvrrefkpfwp.supabase.co/rest/v1/', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndHVzZGVmeHZ2cnJlZmtwZndwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTY4NzUsImV4cCI6MjA5NTY3Mjg3NX0.wuiBY5UpyHJO_J9j1C6CHh5tcgg6xk6Z2BG6I3ppDog');
 
-        function showTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.getElementById(tab).classList.add('active');
+        function showTab(t) {
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(t).classList.add('active');
         }
 
-        async function loadData() {
-            const searchWip = document.getElementById('searchWip').value;
-            const searchStok = document.getElementById('searchStok').value;
-
-            // Load WIP
-            const { data: wip } = await supabase.from('production_logs').select('*').eq('status', 'WIP').ilike('item_id', `%${searchWip}%`);
-            document.getElementById('wip-list').innerHTML = wip.map(i => `<div class="data-item"><span>${i.item_id}</span> <span>${i.quantity} unit</span></div>`).join('');
-
-            // Load Stok
-            const { data: stok } = await supabase.from('stock').select('*').ilike('item_id', `%${searchStok}%`);
-            document.getElementById('stok-list').innerHTML = stok.map(i => `<div class="data-item"><span>${i.item_id}</span> <b>${i.total_qty} pcs</b></div>`).join('');
-        }
-
-        async function simpanProduksi() {
-            const item_id = document.getElementById('item_id').value;
-            const qty = parseInt(document.getElementById('qty').value);
-            await supabase.from('production_logs').insert([{ item_id, quantity: qty, status: 'WIP' }]);
-            alert("Berhasil!"); loadData();
-        }
-
-        async function prosesDelivery() {
-            const id = document.getElementById('deliv_id').value;
-            const qty = parseInt(document.getElementById('deliv_qty').value);
-            
-            // Logika pengurangan stok
-            const { data: current } = await supabase.from('stock').select('total_qty').eq('item_id', id).single();
-            if(current) {
-                await supabase.from('stock').update({ total_qty: current.total_qty - qty }).eq('item_id', id);
-                alert("Stok berhasil dikurangi!"); loadData();
-            } else {
-                alert("ID Item tidak ditemukan di Stok!");
+        // --- LOGIKA EDIT SELISIH WIP ---
+        async function editWip(id) {
+            const newQty = prompt("Masukkan jumlah real (Update Selisih):");
+            if (newQty !== null) {
+                await supabase.from('production_logs').update({ quantity: parseInt(newQty) }).eq('id', id);
+                alert("Selisih terupdate!"); loadAll();
             }
         }
 
-        loadData();
+        async function saveProduksi() {
+            const item_id = document.getElementById('p_id').value;
+            const qty = document.getElementById('p_qty').value;
+            await supabase.from('production_logs').insert([{ item_id, quantity: qty, status: 'WIP' }]);
+            alert("Data logged!"); loadAll();
+        }
+
+        async function prosesDelivery() {
+            const id = document.getElementById('d_id').value;
+            const qty = parseInt(document.getElementById('d_qty').value);
+            const { data: st } = await supabase.from('stock').select('total_qty').eq('item_id', id).single();
+            if(st) {
+                await supabase.from('stock').update({ total_qty: st.total_qty - qty }).eq('item_id', id);
+                alert("Delivery Sent!"); loadAll();
+            }
+        }
+
+        async function loadAll() {
+            const { data: wip } = await supabase.from('production_logs').select('*').eq('status','WIP');
+            document.getElementById('wip-list').innerHTML = wip.map(i => `<div class='row'><span>${i.item_id}</span> <span>${i.quantity}</span> <button onclick="editWip(${i.id})">ADJUST</button></div>`).join('');
+            
+            const { data: stk } = await supabase.from('stock').select('*');
+            document.getElementById('stok-list').innerHTML = stk.map(i => `<div class='row'><span>${i.item_id}</span> <b>${i.total_qty}</b></div>`).join('');
+        }
+
+        loadAll();
     </script>
 </body>
 </html>
